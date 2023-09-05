@@ -23,12 +23,14 @@ class UsersController {
       [name, email, hashedPassword]
     );
 
-    return res.status(201).json({});
+    return res
+      .status(201)
+      .json({ message: `Usuário {${name}} criado com sucesso.` });
   }
 
   async update(req, res) {
-    const { name, email, password, oldPassword } = req.body;
-    const { id } = req.params;
+    const { name, email, passwordOld, passwordNew } = req.body;
+    const id = req.user.id;
 
     const database = await sqliteConnection();
     const user = await database.get('SELECT * FROM users WHERE id = (?)', [id]);
@@ -49,18 +51,18 @@ class UsersController {
     user.name = name ?? user.name;
     user.email = email ?? user.email;
 
-    if (password && !oldPassword) {
+    if (passwordNew && !passwordOld) {
       throw new AppError(
         'Você precisa informar a senha atual para redefinir a senha.'
       );
     }
 
-    if (password && oldPassword) {
-      const checkOldPassword = await bcrypt.compare(oldPassword, user.password);
+    if (passwordNew && passwordOld) {
+      const checkOldPassword = await bcrypt.compare(passwordOld, user.password);
       if (!checkOldPassword) {
         throw new AppError('A senha atual está incorreta');
       }
-      user.password = await bcrypt.hash(password, 8);
+      user.password = await bcrypt.hash(passwordNew, 8);
     }
 
     await database.run(
@@ -68,7 +70,7 @@ class UsersController {
       [user.name, user.email, user.password, id]
     );
 
-    return res.status(200).json(user);
+    return res.status(200).json({ user });
   }
 }
 
